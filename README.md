@@ -9,7 +9,7 @@
 - **页面置换算法**：实现了FIFO（先进先出）和OPT（最佳置换）两种算法
 - **地址转换**：支持逻辑地址到物理地址的转换
 - **缺页统计**：统计和计算缺页率
-- **可视化输出**：详细显示页面置换过程
+- **详细过程输出**：详细打印每一步置换过程，便于学习和分析
 
 ## 系统参数
 
@@ -21,7 +21,7 @@
 ## 文件结构
 
 ```
-课程设计/
+page-replacement-simulator/
 ├── 请求调页存储管理方式的模拟.py  # 主程序文件
 ├── README.md                      # 项目说明文档
 ├── .gitignore                     # Git忽略文件配置
@@ -36,6 +36,8 @@
 python 请求调页存储管理方式的模拟.py
 ```
 
+- **无需额外依赖包，直接运行即可。**
+
 ### 主要功能
 
 1. **生成随机指令序列**：生成320条不重复的随机指令访问序列
@@ -48,7 +50,6 @@ python 请求调页存储管理方式的模拟.py
 ### PageReplacementSimulator类
 
 ```python
-# 初始化模拟器
 simulator = PageReplacementSimulator(
     total_instructions=320,  # 总指令数
     page_size=10,           # 每页指令数
@@ -56,28 +57,33 @@ simulator = PageReplacementSimulator(
     sequence=random_sequence # 指令访问序列
 )
 
-# 执行FIFO算法
-fifo_faults = simulator.FIFO()
-
-# 重置模拟器状态
-simulator.reset()
-
-# 执行OPT算法
-opt_faults = simulator.OPT()
+fifo_faults = simulator.FIFO()  # 执行FIFO算法，返回缺页次数
+simulator.reset()               # 重置模拟器状态
+opt_faults = simulator.OPT()    # 执行OPT算法，返回缺页次数
 ```
+
+#### 构造参数说明
+- `total_instructions`：总指令数（默认320）
+- `page_size`：每页指令数（默认10）
+- `memory_blocks`：内存块数（默认4）
+- `sequence`：指令访问序列（长度为320的逻辑地址列表）
+
+#### 主要方法
+- `FIFO()`：先进先出页面置换算法，详细打印每一步，返回缺页次数
+- `OPT()`：最佳置换算法，详细打印每一步，返回缺页次数
+- `reset()`：重置模拟器状态
 
 ### 工具函数
 
 ```python
-# 计算页号和页内地址
-page_number, page_offset = calculate_page_info(logical_address, page_size=10)
-
-# 计算物理地址
-physical_address = calculate_physical_address(page_offset, frame_number, page_size=10)
-
-# 生成随机指令序列
-random_sequence = generate_random_sequence()
+random_sequence = generate_random_sequence()  # 生成随机指令序列
+page_number, page_offset = calculate_page_info(logical_address, page_size=10)  # 计算页号和页内地址
+physical_address = calculate_physical_address(page_offset, frame_number, page_size=10)  # 计算物理地址
 ```
+
+- `generate_random_sequence()`：生成0-319的随机排列，长度为320
+- `calculate_page_info(logical_address, page_size=10)`：输入逻辑地址，返回(页号, 页内地址)
+- `calculate_physical_address(page_offset, frame_number, page_size=10)`：输入页内地址和帧号，返回物理地址
 
 ## 算法说明
 
@@ -102,6 +108,19 @@ random_sequence = generate_random_sequence()
 更换后内存中页面：[15]
 --------------------------------
 ...
+FIFO算法缺页次数: 124
+
+=== 重置模拟器 ===
+模拟器已重置到初始状态
+
+=== 执行OPT算法 ===
+...
+OPT算法缺页次数: 101
+
+=== 算法性能比较 ===
+FIFO算法缺页次数: 124
+OPT算法缺页次数: 101
+OPT算法相比FIFO算法减少了 18.55% 的缺页
 ```
 
 ## 开发环境
@@ -129,7 +148,7 @@ git log
 
 ## 作者
 
-操作系统课程设计项目
+JianjiaGuan
 
 ## 许可证
 
