@@ -61,6 +61,7 @@ class PageReplacementSimulator:
         self.memory = []  # 当前在内存中的页面
         self.page_faults = 0  # 缺页次数
         self.fifo_queue = []  # FIFO队列，记录页面进入内存的顺序
+        self.lru_access_time = {}  # LRU算法：记录每个页面的最后访问时间
 
     def reset(self):
         """
@@ -69,6 +70,7 @@ class PageReplacementSimulator:
         self.memory = []  # 清空内存
         self.page_faults = 0  # 重置缺页次数
         self.fifo_queue = []  # 重置FIFO队列
+        self.lru_access_time = {}  # 重置LRU访问时间记录
         print("模拟器已重置到初始状态")
 
     def FIFO(self):
@@ -159,6 +161,43 @@ class PageReplacementSimulator:
         victim_page = max(future_usage, key=future_usage.get)
         return victim_page
 
+    def LRU(self):
+        """
+        LRU页面置换算法
+        """
+        for i in range(self.total_instructions):
+            print("--------------------------------")
+            print(f"指令：{i}，逻辑地址为：{self.sequence[i]}")
+            page_number, page_offset = calculate_page_info(self.sequence[i], self.page_size)
+            print(f"页号：{page_number}，页内地址：{page_offset}")
+            print(f"内存中页面：{self.memory}")
+            if page_number not in self.memory:
+                print("发生缺页中断")
+                if len(self.memory) < self.memory_blocks:
+                    self.memory.append(page_number)
+                    self.lru_access_time[page_number] = i  # 记录访问时间
+                    print(f"页面{page_number}被加载到内存")
+                else:
+                    # LRU算法：选择最长时间未被访问的页面进行置换
+                    # 只考虑当前在内存中的页面
+                    memory_pages = {page: self.lru_access_time[page] for page in self.memory}
+                    victim_page = min(memory_pages, key=memory_pages.get)
+                    victim_index = self.memory.index(victim_page)
+                    self.memory[victim_index] = page_number  # 直接替换
+                    # 删除被置换页面的访问时间记录
+                    del self.lru_access_time[victim_page]
+                    self.lru_access_time[page_number] = i  # 更新访问时间
+                    print(f"页面{victim_page}被置换出内存")
+                    print(f"页面{page_number}被加载到内存块{victim_index}")
+                self.page_faults += 1
+                print(f"更换后内存中页面：{self.memory}")
+            else:
+                self.lru_access_time[page_number] = i  # 更新访问时间
+                print(f"指令：{i}在内存中，其在内存中物理地址为：{calculate_physical_address(page_offset, self.memory.index(page_number), self.page_size)}")
+            print("--------------------------------")
+
+        return self.page_faults
+
 class TkinterPageAnimation:
     def __init__(self, simulator):
         """
@@ -177,6 +216,7 @@ class TkinterPageAnimation:
         self.algorithm_type = None
         self.fifo_faults = 0
         self.opt_faults = 0
+        self.lru_faults = 0
         
     def create_selection_window(self):
         """创建算法选择界面"""
@@ -203,8 +243,10 @@ class TkinterPageAnimation:
                        value="fifo").pack(anchor=tk.W, pady=5)
         ttk.Radiobutton(algorithm_frame, text="OPT算法", variable=self.algorithm_var, 
                        value="opt").pack(anchor=tk.W, pady=5)
-        ttk.Radiobutton(algorithm_frame, text="两种算法都执行", variable=self.algorithm_var, 
-                       value="both").pack(anchor=tk.W, pady=5)
+        ttk.Radiobutton(algorithm_frame, text="LRU算法", variable=self.algorithm_var, 
+                       value="lru").pack(anchor=tk.W, pady=5)
+        ttk.Radiobutton(algorithm_frame, text="三种算法都执行", variable=self.algorithm_var, 
+                       value="all").pack(anchor=tk.W, pady=5)
         
         # 参数设置区域
         params_frame = ttk.LabelFrame(main_frame, text="参数设置", padding=20)
@@ -293,7 +335,7 @@ class TkinterPageAnimation:
             self.results_text.insert(tk.END, f"算法选择: {algorithm_choice}\n\n")
             
             # 计算选定的算法
-            if algorithm_choice in ["fifo", "both"]:
+            if algorithm_choice in ["fifo", "all"]:
                 # 计算FIFO
                 fifo_simulator = PageReplacementSimulator(
                     total_instructions=sequence_length,
@@ -308,7 +350,7 @@ class TkinterPageAnimation:
                 self.results_text.insert(tk.END, f"缺页次数: {self.fifo_faults}\n")
                 self.results_text.insert(tk.END, f"缺页率: {fifo_rate:.2f}%\n\n")
             
-            if algorithm_choice in ["opt", "both"]:
+            if algorithm_choice in ["opt", "all"]:
                 # 计算OPT
                 opt_simulator = PageReplacementSimulator(
                     total_instructions=sequence_length,
@@ -323,20 +365,51 @@ class TkinterPageAnimation:
                 self.results_text.insert(tk.END, f"缺页次数: {self.opt_faults}\n")
                 self.results_text.insert(tk.END, f"缺页率: {opt_rate:.2f}%\n\n")
             
+            if algorithm_choice in ["lru", "all"]:
+                # 计算LRU
+                lru_simulator = PageReplacementSimulator(
+                    total_instructions=sequence_length,
+                    page_size=page_size,
+                    memory_blocks=memory_blocks,
+                    sequence=new_sequence.copy()
+                )
+                self.lru_faults = lru_simulator.LRU()
+                lru_rate = (self.lru_faults / sequence_length) * 100
+                
+                self.results_text.insert(tk.END, f"=== LRU算法结果 ===\n")
+                self.results_text.insert(tk.END, f"缺页次数: {self.lru_faults}\n")
+                self.results_text.insert(tk.END, f"缺页率: {lru_rate:.2f}%\n\n")
+            
             # 比较结果
-            if algorithm_choice == "both":
+            if algorithm_choice == "all":
                 self.results_text.insert(tk.END, f"=== 算法性能比较 ===\n")
                 self.results_text.insert(tk.END, f"FIFO算法缺页次数: {self.fifo_faults}\n")
                 self.results_text.insert(tk.END, f"OPT算法缺页次数: {self.opt_faults}\n")
+                self.results_text.insert(tk.END, f"LRU算法缺页次数: {self.lru_faults}\n\n")
                 
-                if self.fifo_faults > self.opt_faults:
-                    improvement = ((self.fifo_faults - self.opt_faults) / self.fifo_faults) * 100
-                    self.results_text.insert(tk.END, f"OPT算法相比FIFO算法减少了 {improvement:.2f}% 的缺页\n")
-                elif self.fifo_faults < self.opt_faults:
-                    degradation = ((self.opt_faults - self.fifo_faults) / self.opt_faults) * 100
-                    self.results_text.insert(tk.END, f"FIFO算法相比OPT算法减少了 {degradation:.2f}% 的缺页\n")
+                # 找出最优算法
+                min_faults = min(self.fifo_faults, self.opt_faults, self.lru_faults)
+                if min_faults == self.opt_faults:
+                    best_algorithm = "OPT算法"
+                elif min_faults == self.lru_faults:
+                    best_algorithm = "LRU算法"
                 else:
-                    self.results_text.insert(tk.END, f"两种算法性能相同\n")
+                    best_algorithm = "FIFO算法"
+                
+                self.results_text.insert(tk.END, f"最优算法: {best_algorithm} (缺页次数: {min_faults})\n\n")
+                
+                # 计算各算法相对于最优算法的性能
+                if self.fifo_faults > min_faults:
+                    fifo_degradation = ((self.fifo_faults - min_faults) / self.fifo_faults) * 100
+                    self.results_text.insert(tk.END, f"FIFO算法相比最优算法增加了 {fifo_degradation:.2f}% 的缺页\n")
+                
+                if self.lru_faults > min_faults:
+                    lru_degradation = ((self.lru_faults - min_faults) / self.lru_faults) * 100
+                    self.results_text.insert(tk.END, f"LRU算法相比最优算法增加了 {lru_degradation:.2f}% 的缺页\n")
+                
+                if self.opt_faults > min_faults:
+                    opt_degradation = ((self.opt_faults - min_faults) / self.opt_faults) * 100
+                    self.results_text.insert(tk.END, f"OPT算法相比最优算法增加了 {opt_degradation:.2f}% 的缺页\n")
             
             # 更新模拟器实例
             self.simulator = new_simulator
@@ -369,7 +442,12 @@ class TkinterPageAnimation:
             self.create_window("OPT页面置换算法动画演示")
             self.draw_memory_blocks()
             self.root.mainloop()
-        elif algorithm_choice == "both":
+        elif algorithm_choice == "lru":
+            self.algorithm_type = 'LRU'
+            self.create_window("LRU页面置换算法动画演示")
+            self.draw_memory_blocks()
+            self.root.mainloop()
+        elif algorithm_choice == "all":
             # 创建选择窗口
             self.create_animation_selection_window()
         else:
@@ -399,6 +477,10 @@ class TkinterPageAnimation:
                               command=lambda: self.start_specific_animation('OPT', animation_window))
         opt_button.pack(pady=10)
         
+        lru_button = ttk.Button(main_frame, text="LRU算法动画", 
+                              command=lambda: self.start_specific_animation('LRU', animation_window))
+        lru_button.pack(pady=10)
+        
         # 关闭按钮
         close_button = ttk.Button(main_frame, text="关闭", 
                                 command=animation_window.destroy)
@@ -411,9 +493,12 @@ class TkinterPageAnimation:
         if algorithm == 'FIFO':
             self.algorithm_type = 'FIFO'
             self.create_window("FIFO页面置换算法动画演示")
-        else:
+        elif algorithm == 'OPT':
             self.algorithm_type = 'OPT'
             self.create_window("OPT页面置换算法动画演示")
+        elif algorithm == 'LRU':
+            self.algorithm_type = 'LRU'
+            self.create_window("LRU页面置换算法动画演示")
         
         self.draw_memory_blocks()
         self.root.mainloop()
@@ -666,6 +751,11 @@ class TkinterPageAnimation:
                 if hasattr(self, 'algorithm_type') and self.algorithm_type == 'OPT':
                     victim_page = self.simulator._find_optimal_victim(self.current_step)
                     algorithm_name = "OPT算法"
+                elif hasattr(self, 'algorithm_type') and self.algorithm_type == 'LRU':
+                    # 只考虑当前在内存中的页面
+                    memory_pages = {page: self.simulator.lru_access_time[page] for page in self.simulator.memory}
+                    victim_page = min(memory_pages, key=memory_pages.get)
+                    algorithm_name = "LRU算法"
                 else:  # FIFO
                     victim_page = self.simulator.fifo_queue[0]
                     algorithm_name = "FIFO算法"
@@ -735,6 +825,13 @@ class TkinterPageAnimation:
                     victim_index = self.simulator.memory.index(victim_page)
                     self.info_labels['status'].config(text="页面置换中", foreground='orange')
                     self.info_labels['action'].config(text=f"OPT: 置换页面{victim_page}，加载页面{page_number}到内存块{victim_index}")
+                elif hasattr(self, 'algorithm_type') and self.algorithm_type == 'LRU':
+                    # 只考虑当前在内存中的页面
+                    memory_pages = {page: self.simulator.lru_access_time[page] for page in self.simulator.memory}
+                    victim_page = min(memory_pages, key=memory_pages.get)
+                    victim_index = self.simulator.memory.index(victim_page)
+                    self.info_labels['status'].config(text="页面置换中", foreground='orange')
+                    self.info_labels['action'].config(text=f"LRU: 置换页面{victim_page}，加载页面{page_number}到内存块{victim_index}")
                 else:  # FIFO
                     victim_page = self.simulator.fifo_queue[0]
                     victim_index = self.simulator.memory.index(victim_page)
@@ -769,6 +866,8 @@ class TkinterPageAnimation:
             self.simulator.memory.append(page_number)
             if hasattr(self, 'algorithm_type') and self.algorithm_type == 'FIFO':
                 self.simulator.fifo_queue.append(page_number)
+            if hasattr(self, 'algorithm_type') and self.algorithm_type == 'LRU':
+                self.simulator.lru_access_time[page_number] = self.current_step
         else:
             # 需要置换
             self.show_page_replacement_animation(page_number)
@@ -778,6 +877,17 @@ class TkinterPageAnimation:
                 victim_page = self.simulator._find_optimal_victim(self.current_step)
                 victim_index = self.simulator.memory.index(victim_page)
                 self.simulator.memory[victim_index] = page_number
+            elif hasattr(self, 'algorithm_type') and self.algorithm_type == 'LRU':
+                # LRU算法
+                # 只考虑当前在内存中的页面
+                memory_pages = {page: self.simulator.lru_access_time[page] for page in self.simulator.memory}
+                victim_page = min(memory_pages, key=memory_pages.get)
+                algorithm_name = "LRU算法"
+                victim_index = self.simulator.memory.index(victim_page)
+                self.simulator.memory[victim_index] = page_number
+                # 删除被置换页面的访问时间记录
+                del self.simulator.lru_access_time[victim_page]
+                self.simulator.lru_access_time[page_number] = self.current_step
             else:  # FIFO算法
                 victim_page = self.simulator.fifo_queue[0]
                 self.simulator.fifo_queue.pop(0)
@@ -789,6 +899,9 @@ class TkinterPageAnimation:
     
     def handle_page_hit(self, page_number, page_offset):
         """处理页面命中"""
+        # 更新LRU访问时间
+        if hasattr(self, 'algorithm_type') and self.algorithm_type == 'LRU':
+            self.simulator.lru_access_time[page_number] = self.current_step
         self.show_page_hit_animation(page_number)
     
     def show_free_block_animation(self, page_number):
@@ -818,10 +931,15 @@ class TkinterPageAnimation:
         self.canvas.delete("replacement")
         self.canvas.delete("page_hit")
         
-        # 确定被置换的页面
+        # 确定被置换的页面（在置换前计算）
         if hasattr(self, 'algorithm_type') and self.algorithm_type == 'OPT':
             victim_page = self.simulator._find_optimal_victim(self.current_step)
             algorithm_name = "OPT算法"
+        elif hasattr(self, 'algorithm_type') and self.algorithm_type == 'LRU':
+            # 只考虑当前在内存中的页面
+            memory_pages = {page: self.simulator.lru_access_time[page] for page in self.simulator.memory}
+            victim_page = min(memory_pages, key=memory_pages.get)
+            algorithm_name = "LRU算法"
         else:  # FIFO
             victim_page = self.simulator.fifo_queue[0]
             algorithm_name = "FIFO算法"
@@ -925,6 +1043,15 @@ class TkinterPageAnimation:
         self.root.mainloop()
         return self.simulator.page_faults
 
+    def animate_lru(self):
+        """LRU算法动画"""
+        self.simulator.reset()
+        self.algorithm_type = 'LRU'
+        self.create_window("LRU页面置换算法动画演示")
+        self.draw_memory_blocks()
+        self.root.mainloop()
+        return self.simulator.page_faults
+
     def update_info_display(self, step):
         """更新信息显示"""
         if step >= len(self.simulator.sequence):
@@ -958,6 +1085,12 @@ class TkinterPageAnimation:
                         victim_page = self.simulator._find_optimal_victim(step)
                         victim_index = self.simulator.memory.index(victim_page)
                         self.info_labels['action'].config(text=f"OPT: 置换页面{victim_page}，加载页面{page_number}到内存块{victim_index}")
+                    elif hasattr(self, 'algorithm_type') and self.algorithm_type == 'LRU':
+                        # 只考虑当前在内存中的页面
+                        memory_pages = {page: self.simulator.lru_access_time[page] for page in self.simulator.memory}
+                        victim_page = min(memory_pages, key=memory_pages.get)
+                        victim_index = self.simulator.memory.index(victim_page)
+                        self.info_labels['action'].config(text=f"LRU: 置换页面{victim_page}，加载页面{page_number}到内存块{victim_index}")
                     else:  # FIFO
                         victim_page = self.simulator.fifo_queue[0]
                         victim_index = self.simulator.memory.index(victim_page)
