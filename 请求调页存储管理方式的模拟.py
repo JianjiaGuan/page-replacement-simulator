@@ -1,7 +1,7 @@
 import random
 from collections import deque
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import threading
 
 def generate_random_sequence():
@@ -174,7 +174,250 @@ class TkinterPageAnimation:
         self.animation_speed = 1000  # 毫秒
         self.is_running = False
         self.animation_thread = None
+        self.algorithm_type = None
+        self.fifo_faults = 0
+        self.opt_faults = 0
         
+    def create_selection_window(self):
+        """创建算法选择界面"""
+        self.root = tk.Tk()
+        self.root.title("页面置换算法选择")
+        self.root.geometry("800x600")
+        self.root.configure(bg='#f0f0f0')
+        
+        # 创建主框架
+        main_frame = ttk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # 标题
+        title_label = ttk.Label(main_frame, text="页面置换算法模拟器")
+        title_label.pack(pady=(0, 30))
+        
+        # 算法选择区域
+        algorithm_frame = ttk.LabelFrame(main_frame, text="选择算法", padding=20)
+        algorithm_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        self.algorithm_var = tk.StringVar(value="both")
+        
+        ttk.Radiobutton(algorithm_frame, text="FIFO算法", variable=self.algorithm_var, 
+                       value="fifo").pack(anchor=tk.W, pady=5)
+        ttk.Radiobutton(algorithm_frame, text="OPT算法", variable=self.algorithm_var, 
+                       value="opt").pack(anchor=tk.W, pady=5)
+        ttk.Radiobutton(algorithm_frame, text="两种算法都执行", variable=self.algorithm_var, 
+                       value="both").pack(anchor=tk.W, pady=5)
+        
+        # 参数设置区域
+        params_frame = ttk.LabelFrame(main_frame, text="参数设置", padding=20)
+        params_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        # 指令序列长度
+        ttk.Label(params_frame, text="指令序列长度:").pack(anchor=tk.W)
+        self.sequence_length_var = tk.IntVar(value=320)
+        sequence_length_entry = ttk.Entry(params_frame, textvariable=self.sequence_length_var, width=10)
+        sequence_length_entry.pack(anchor=tk.W, pady=(5, 10))
+        
+        # 内存块数
+        ttk.Label(params_frame, text="内存块数:").pack(anchor=tk.W)
+        self.memory_blocks_var = tk.IntVar(value=4)
+        memory_blocks_entry = ttk.Entry(params_frame, textvariable=self.memory_blocks_var, width=10)
+        memory_blocks_entry.pack(anchor=tk.W, pady=(5, 10))
+        
+        # 页大小
+        ttk.Label(params_frame, text="页大小:").pack(anchor=tk.W)
+        self.page_size_var = tk.IntVar(value=10)
+        page_size_entry = ttk.Entry(params_frame, textvariable=self.page_size_var, width=10)
+        page_size_entry.pack(anchor=tk.W, pady=(5, 10))
+        
+        # 结果显示区域
+        results_frame = ttk.LabelFrame(main_frame, text="计算结果", padding=20)
+        results_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+        
+        # 创建结果显示的文本框
+        self.results_text = tk.Text(results_frame, height=10, font=('Arial', 10), wrap=tk.WORD)
+        scrollbar = ttk.Scrollbar(results_frame, orient=tk.VERTICAL, command=self.results_text.yview)
+        self.results_text.configure(yscrollcommand=scrollbar.set)
+        
+        self.results_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 按钮区域
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        self.calculate_button = ttk.Button(button_frame, text="计算算法性能", 
+                                         command=self.calculate_algorithms)
+        self.calculate_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.animate_button = ttk.Button(button_frame, text="启动动画演示", 
+                                       command=self.start_animation_demo)
+        self.animate_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.clear_button = ttk.Button(button_frame, text="清空结果", 
+                                     command=self.clear_results)
+        self.clear_button.pack(side=tk.LEFT)
+        
+        # 初始化结果显示
+        self.results_text.insert(tk.END, "请选择算法并点击'计算算法性能'按钮开始计算...\n")
+        self.results_text.config(state=tk.DISABLED)
+        
+    def calculate_algorithms(self):
+        """计算选定算法的性能"""
+        try:
+            # 获取参数
+            sequence_length = self.sequence_length_var.get()
+            memory_blocks = self.memory_blocks_var.get()
+            page_size = self.page_size_var.get()
+            algorithm_choice = self.algorithm_var.get()
+            
+            # 生成新的随机序列
+            new_sequence = generate_random_sequence()[:sequence_length]
+            
+            # 创建新的模拟器实例
+            new_simulator = PageReplacementSimulator(
+                total_instructions=sequence_length,
+                page_size=page_size,
+                memory_blocks=memory_blocks,
+                sequence=new_sequence
+            )
+            
+            # 清空结果显示
+            self.results_text.config(state=tk.NORMAL)
+            self.results_text.delete(1.0, tk.END)
+            
+            # 显示参数信息
+            self.results_text.insert(tk.END, f"=== 参数设置 ===\n")
+            self.results_text.insert(tk.END, f"指令序列长度: {sequence_length}\n")
+            self.results_text.insert(tk.END, f"内存块数: {memory_blocks}\n")
+            self.results_text.insert(tk.END, f"页大小: {page_size}\n")
+            self.results_text.insert(tk.END, f"总页数: {sequence_length // page_size}\n")
+            self.results_text.insert(tk.END, f"算法选择: {algorithm_choice}\n\n")
+            
+            # 计算选定的算法
+            if algorithm_choice in ["fifo", "both"]:
+                # 计算FIFO
+                fifo_simulator = PageReplacementSimulator(
+                    total_instructions=sequence_length,
+                    page_size=page_size,
+                    memory_blocks=memory_blocks,
+                    sequence=new_sequence.copy()
+                )
+                self.fifo_faults = fifo_simulator.FIFO()
+                fifo_rate = (self.fifo_faults / sequence_length) * 100
+                
+                self.results_text.insert(tk.END, f"=== FIFO算法结果 ===\n")
+                self.results_text.insert(tk.END, f"缺页次数: {self.fifo_faults}\n")
+                self.results_text.insert(tk.END, f"缺页率: {fifo_rate:.2f}%\n\n")
+            
+            if algorithm_choice in ["opt", "both"]:
+                # 计算OPT
+                opt_simulator = PageReplacementSimulator(
+                    total_instructions=sequence_length,
+                    page_size=page_size,
+                    memory_blocks=memory_blocks,
+                    sequence=new_sequence.copy()
+                )
+                self.opt_faults = opt_simulator.OPT()
+                opt_rate = (self.opt_faults / sequence_length) * 100
+                
+                self.results_text.insert(tk.END, f"=== OPT算法结果 ===\n")
+                self.results_text.insert(tk.END, f"缺页次数: {self.opt_faults}\n")
+                self.results_text.insert(tk.END, f"缺页率: {opt_rate:.2f}%\n\n")
+            
+            # 比较结果
+            if algorithm_choice == "both":
+                self.results_text.insert(tk.END, f"=== 算法性能比较 ===\n")
+                self.results_text.insert(tk.END, f"FIFO算法缺页次数: {self.fifo_faults}\n")
+                self.results_text.insert(tk.END, f"OPT算法缺页次数: {self.opt_faults}\n")
+                
+                if self.fifo_faults > self.opt_faults:
+                    improvement = ((self.fifo_faults - self.opt_faults) / self.fifo_faults) * 100
+                    self.results_text.insert(tk.END, f"OPT算法相比FIFO算法减少了 {improvement:.2f}% 的缺页\n")
+                elif self.fifo_faults < self.opt_faults:
+                    degradation = ((self.opt_faults - self.fifo_faults) / self.opt_faults) * 100
+                    self.results_text.insert(tk.END, f"FIFO算法相比OPT算法减少了 {degradation:.2f}% 的缺页\n")
+                else:
+                    self.results_text.insert(tk.END, f"两种算法性能相同\n")
+            
+            # 更新模拟器实例
+            self.simulator = new_simulator
+            
+            self.results_text.config(state=tk.DISABLED)
+            
+        except Exception as e:
+            self.results_text.config(state=tk.NORMAL)
+            self.results_text.insert(tk.END, f"计算过程中出现错误: {str(e)}\n")
+            self.results_text.config(state=tk.DISABLED)
+    
+    def clear_results(self):
+        """清空结果显示"""
+        self.results_text.config(state=tk.NORMAL)
+        self.results_text.delete(1.0, tk.END)
+        self.results_text.insert(tk.END, "请选择算法并点击'计算算法性能'按钮开始计算...\n")
+        self.results_text.config(state=tk.DISABLED)
+    
+    def start_animation_demo(self):
+        """启动动画演示"""
+        algorithm_choice = self.algorithm_var.get()
+        
+        if algorithm_choice == "fifo":
+            self.algorithm_type = 'FIFO'
+            self.create_window("FIFO页面置换算法动画演示")
+            self.draw_memory_blocks()
+            self.root.mainloop()
+        elif algorithm_choice == "opt":
+            self.algorithm_type = 'OPT'
+            self.create_window("OPT页面置换算法动画演示")
+            self.draw_memory_blocks()
+            self.root.mainloop()
+        elif algorithm_choice == "both":
+            # 创建选择窗口
+            self.create_animation_selection_window()
+        else:
+            tk.messagebox.showwarning("警告", "请先选择算法！")
+    
+    def create_animation_selection_window(self):
+        """创建动画选择窗口"""
+        animation_window = tk.Toplevel(self.root)
+        animation_window.title("选择动画演示算法")
+        animation_window.geometry("400x300")
+        animation_window.configure(bg='#f0f0f0')
+        
+        # 主框架
+        main_frame = ttk.Frame(animation_window)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # 标题
+        title_label = ttk.Label(main_frame, text="选择要演示的算法")
+        title_label.pack(pady=(0, 30))
+        
+        # 按钮
+        fifo_button = ttk.Button(main_frame, text="FIFO算法动画", 
+                               command=lambda: self.start_specific_animation('FIFO', animation_window))
+        fifo_button.pack(pady=10)
+        
+        opt_button = ttk.Button(main_frame, text="OPT算法动画", 
+                              command=lambda: self.start_specific_animation('OPT', animation_window))
+        opt_button.pack(pady=10)
+        
+        # 关闭按钮
+        close_button = ttk.Button(main_frame, text="关闭", 
+                                command=animation_window.destroy)
+        close_button.pack(pady=20)
+    
+    def start_specific_animation(self, algorithm, window):
+        """启动特定的算法动画"""
+        window.destroy()
+        
+        if algorithm == 'FIFO':
+            self.algorithm_type = 'FIFO'
+            self.create_window("FIFO页面置换算法动画演示")
+        else:
+            self.algorithm_type = 'OPT'
+            self.create_window("OPT页面置换算法动画演示")
+        
+        self.draw_memory_blocks()
+        self.root.mainloop()
+
     def create_window(self, title="页面置换算法动画演示"):
         """创建动画窗口"""
         self.root = tk.Tk()
@@ -755,109 +998,13 @@ if __name__ == "__main__":
 
     simulator = PageReplacementSimulator(total_instructions=320, page_size=10, memory_blocks=4, sequence=random_sequence)
     
-    print("请选择运行模式：")
-    print("1. 文本模式（详细输出）")
-    print("2. Tkinter动画模式（推荐）")
-    print("3. 两种模式都运行")
+    print("=== 页面置换算法模拟器 ===")
+    print("正在启动交互界面...")
     
-    choice = input("请输入选择（1/2/3）: ").strip()
-    
-    if choice == "1":
-        print("=== 执行FIFO算法 ===")
-        fifo_faults = simulator.FIFO()
-        print(f"FIFO算法缺页次数: {fifo_faults}")
-        
-        print("\n=== 重置模拟器 ===")
-        simulator.reset()
-        
-        print("\n=== 执行OPT算法 ===")
-        opt_faults = simulator.OPT()
-        print(f"OPT算法缺页次数: {opt_faults}")
-        
-        print("\n=== 算法性能比较 ===")
-        print(f"FIFO算法缺页次数: {fifo_faults}")
-        print(f"OPT算法缺页次数: {opt_faults}")
-        if fifo_faults > opt_faults:
-            improvement = ((fifo_faults - opt_faults) / fifo_faults) * 100
-            print(f"OPT算法相比FIFO算法减少了 {improvement:.2f}% 的缺页")
-        else:
-            print("FIFO算法表现更好（理论上不应该发生）")
-    
-    elif choice == "2":
-        print("=== Tkinter动画演示模式 ===")
-        tk_animator = TkinterPageAnimation(simulator)
-        
-        print("正在启动FIFO算法动画...")
-        fifo_faults = tk_animator.animate_fifo()
-        print(f"FIFO算法缺页次数: {fifo_faults}")
-        
-        print("\n正在启动OPT算法动画...")
-        opt_faults = tk_animator.animate_opt()
-        print(f"OPT算法缺页次数: {opt_faults}")
-        
-        print("\n=== 算法性能比较 ===")
-        print(f"FIFO算法缺页次数: {fifo_faults}")
-        print(f"OPT算法缺页次数: {opt_faults}")
-        if fifo_faults > opt_faults:
-            improvement = ((fifo_faults - opt_faults) / fifo_faults) * 100
-            print(f"OPT算法相比FIFO算法减少了 {improvement:.2f}% 的缺页")
-        else:
-            print("FIFO算法表现更好（理论上不应该发生）")
-    
-    elif choice == "3":
-        print("=== 文本模式 ===")
-        print("=== 执行FIFO算法 ===")
-        fifo_faults = simulator.FIFO()
-        print(f"FIFO算法缺页次数: {fifo_faults}")
-        
-        print("\n=== 重置模拟器 ===")
-        simulator.reset()
-        
-        print("\n=== 执行OPT算法 ===")
-        opt_faults = simulator.OPT()
-        print(f"OPT算法缺页次数: {opt_faults}")
-        
-        print("\n=== Tkinter动画演示模式 ===")
-        tk_animator = TkinterPageAnimation(simulator)
-        
-        print("正在启动FIFO算法动画...")
-        fifo_faults_tk = tk_animator.animate_fifo()
-        print(f"FIFO算法缺页次数: {fifo_faults_tk}")
-        
-        print("\n正在启动OPT算法动画...")
-        opt_faults_tk = tk_animator.animate_opt()
-        print(f"OPT算法缺页次数: {opt_faults_tk}")
-        
-        print("\n=== 算法性能比较 ===")
-        print(f"FIFO算法缺页次数: {fifo_faults}")
-        print(f"OPT算法缺页次数: {opt_faults}")
-        if fifo_faults > opt_faults:
-            improvement = ((fifo_faults - opt_faults) / fifo_faults) * 100
-            print(f"OPT算法相比FIFO算法减少了 {improvement:.2f}% 的缺页")
-        else:
-            print("FIFO算法表现更好（理论上不应该发生）")
-    
-    else:
-        print("无效选择，默认运行Tkinter动画模式")
-        print("=== Tkinter动画演示模式 ===")
-        tk_animator = TkinterPageAnimation(simulator)
-        
-        print("正在启动FIFO算法动画...")
-        fifo_faults = tk_animator.animate_fifo()
-        print(f"FIFO算法缺页次数: {fifo_faults}")
-        
-        print("\n正在启动OPT算法动画...")
-        opt_faults = tk_animator.animate_opt()
-        print(f"OPT算法缺页次数: {opt_faults}")
-        
-        print("\n=== 算法性能比较 ===")
-        print(f"FIFO算法缺页次数: {fifo_faults}")
-        print(f"OPT算法缺页次数: {opt_faults}")
-        if fifo_faults > opt_faults:
-            improvement = ((fifo_faults - opt_faults) / fifo_faults) * 100
-            print(f"OPT算法相比FIFO算法减少了 {improvement:.2f}% 的缺页")
-        else:
-            print("FIFO算法表现更好（理论上不应该发生）")
+    # 创建动画演示器并启动选择界面
+    tk_animator = TkinterPageAnimation(simulator)
+    tk_animator.create_selection_window()
+    tk_animator.root.mainloop()
 
     
 
