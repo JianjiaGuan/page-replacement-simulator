@@ -179,7 +179,7 @@ class TkinterPageAnimation:
         """创建动画窗口"""
         self.root = tk.Tk()
         self.root.title(title)
-        self.root.geometry("800x600")
+        self.root.geometry("1200x800")  # 增加窗口大小
         self.root.configure(bg='#f0f0f0')
         
         # 创建主框架
@@ -191,7 +191,7 @@ class TkinterPageAnimation:
         title_label.pack(pady=(0, 20))
         
         # 创建画布
-        self.canvas = tk.Canvas(main_frame, width=750, height=400, bg='white', 
+        self.canvas = tk.Canvas(main_frame, width=1150, height=500, bg='white', 
                               relief=tk.RAISED, bd=2)
         self.canvas.pack(pady=(0, 20))
         
@@ -242,7 +242,9 @@ class TkinterPageAnimation:
             ('memory_status', '内存状态:'),
             ('page_faults', '缺页次数:'),
             ('status', '状态:'),
-            ('action', '操作:')
+            ('action', '操作:'),
+            ('physical_address', '物理地址:'),
+            ('address_conversion', '地址转换:')
         ]
         
         for i, (key, text) in enumerate(info_items):
@@ -266,17 +268,17 @@ class TkinterPageAnimation:
         self.canvas.delete("memory_blocks")
         
         # 内存块标题
-        self.canvas.create_text(375, 30, text="内存块状态", font=('Arial', 14, 'bold'), 
+        self.canvas.create_text(575, 30, text="内存块状态", font=('Arial', 14, 'bold'), 
                               fill='#333333', tags="memory_blocks")
         
         # 绘制4个内存块
-        block_width = 150
-        block_height = 80
+        block_width = 180
+        block_height = 100
         start_x = 50
         start_y = 60
         
         for i in range(4):
-            x = start_x + i * (block_width + 20)
+            x = start_x + i * (block_width + 30)
             y = start_y
             
             # 内存块背景
@@ -295,7 +297,7 @@ class TkinterPageAnimation:
                                        width=2, tags="memory_blocks")
             
             # 块号
-            self.canvas.create_text(x + block_width//2, y + 15, 
+            self.canvas.create_text(x + block_width//2, y + 20, 
                                   text=f"内存块 {i}", font=('Arial', 10, 'bold'), 
                                   fill='#666666', tags="memory_blocks")
             
@@ -309,6 +311,132 @@ class TkinterPageAnimation:
                 self.canvas.create_text(x + block_width//2, y + block_height//2, 
                                       text="空闲", font=('Arial', 10), 
                                       fill='#999999', tags="memory_blocks")
+        
+        # 绘制地址转换区域
+        self.draw_address_conversion_area()
+    
+    def draw_address_conversion_area(self):
+        """绘制地址转换区域"""
+        # 地址转换区域标题
+        self.canvas.create_text(575, 200, text="地址转换过程", font=('Arial', 14, 'bold'), 
+                              fill='#333333', tags="address_area")
+        
+        # 绘制地址转换流程图
+        # 逻辑地址框
+        self.canvas.create_rectangle(50, 220, 220, 280, fill='#E3F2FD', outline='#2196F3', 
+                                   width=2, tags="address_area")
+        self.canvas.create_text(135, 235, text="逻辑地址", font=('Arial', 10, 'bold'), 
+                              fill='#1976D2', tags="address_area")
+        self.logical_addr_text = self.canvas.create_text(135, 255, text="", 
+                                                       font=('Arial', 12), fill='#1976D2', 
+                                                       tags="address_area")
+        
+        # 箭头1
+        self.canvas.create_text(245, 250, text="→", font=('Arial', 16, 'bold'), 
+                              fill='#666666', tags="address_area")
+        
+        # 页号框
+        self.canvas.create_rectangle(270, 220, 370, 280, fill='#FFF3E0', outline='#FF9800', 
+                                   width=2, tags="address_area")
+        self.canvas.create_text(320, 235, text="页号", font=('Arial', 10, 'bold'), 
+                              fill='#E65100', tags="address_area")
+        self.page_num_text = self.canvas.create_text(320, 255, text="", 
+                                                   font=('Arial', 12), fill='#E65100', 
+                                                   tags="address_area")
+        
+        # 箭头2
+        self.canvas.create_text(395, 250, text="→", font=('Arial', 16, 'bold'), 
+                              fill='#666666', tags="address_area")
+        
+        # 内存块号框
+        self.canvas.create_rectangle(420, 220, 520, 280, fill='#E8F5E8', outline='#4CAF50', 
+                                   width=2, tags="address_area")
+        self.canvas.create_text(470, 235, text="内存块号", font=('Arial', 10, 'bold'), 
+                              fill='#2E7D32', tags="address_area")
+        self.frame_num_text = self.canvas.create_text(470, 255, text="", 
+                                                    font=('Arial', 12), fill='#2E7D32', 
+                                                    tags="address_area")
+        
+        # 箭头3
+        self.canvas.create_text(545, 250, text="→", font=('Arial', 16, 'bold'), 
+                              fill='#666666', tags="address_area")
+        
+        # 物理地址框
+        self.canvas.create_rectangle(570, 220, 720, 280, fill='#F3E5F5', outline='#9C27B0', 
+                                   width=2, tags="address_area")
+        self.canvas.create_text(645, 235, text="物理地址", font=('Arial', 10, 'bold'), 
+                              fill='#7B1FA2', tags="address_area")
+        self.physical_addr_text = self.canvas.create_text(645, 255, text="", 
+                                                        font=('Arial', 12), fill='#7B1FA2', 
+                                                        tags="address_area")
+        
+        # 页内地址框
+        self.canvas.create_rectangle(745, 220, 845, 280, fill='#FFF8E1', outline='#FFC107', 
+                                   width=2, tags="address_area")
+        self.canvas.create_text(795, 235, text="页内地址", font=('Arial', 10, 'bold'), 
+                              fill='#F57F17', tags="address_area")
+        self.page_offset_text = self.canvas.create_text(795, 255, text="", 
+                                                      font=('Arial', 12), fill='#F57F17', 
+                                                      tags="address_area")
+        
+        # 公式说明
+        self.canvas.create_text(575, 310, text="物理地址 = 内存块号 × 页大小 + 页内地址", 
+                              font=('Arial', 10), fill='#666666', tags="address_area")
+    
+    def update_address_conversion(self, logical_address, page_number, page_offset):
+        """更新地址转换显示"""
+        self.canvas.delete("address_conversion")
+        
+        # 更新逻辑地址
+        self.canvas.itemconfig(self.logical_addr_text, text=str(logical_address))
+        
+        # 更新页号
+        self.canvas.itemconfig(self.page_num_text, text=str(page_number))
+        
+        # 更新页内地址
+        self.canvas.itemconfig(self.page_offset_text, text=str(page_offset))
+        
+        # 检查页面是否在内存中
+        if page_number in self.simulator.memory:
+            # 页面在内存中，计算物理地址
+            frame_number = self.simulator.memory.index(page_number)
+            physical_address = calculate_physical_address(page_offset, frame_number, self.simulator.page_size)
+            
+            # 更新内存块号
+            self.canvas.itemconfig(self.frame_num_text, text=str(frame_number))
+            
+            # 更新物理地址
+            self.canvas.itemconfig(self.physical_addr_text, text=str(physical_address))
+            
+            # 高亮显示转换过程
+            self.canvas.create_text(575, 350, text=f"✓ 页面命中：逻辑地址{logical_address} → 物理地址{physical_address}", 
+                                  font=('Arial', 12, 'bold'), fill='#4CAF50', tags="address_conversion")
+        else:
+            # 页面不在内存中
+            self.canvas.itemconfig(self.frame_num_text, text="缺页")
+            self.canvas.itemconfig(self.physical_addr_text, text="无法计算")
+            
+            # 检查是否有特殊状态
+            current_status = self.info_labels['status'].cget("text")
+            if current_status == "页面置换中":
+                # 显示置换信息
+                if hasattr(self, 'algorithm_type') and self.algorithm_type == 'OPT':
+                    victim_page = self.simulator._find_optimal_victim(self.current_step)
+                    algorithm_name = "OPT算法"
+                else:  # FIFO
+                    victim_page = self.simulator.fifo_queue[0]
+                    algorithm_name = "FIFO算法"
+                
+                self.canvas.create_text(575, 350, text=f"🔄 {algorithm_name}：置换页面{victim_page}，加载页面{page_number}", 
+                                      font=('Arial', 12, 'bold'), fill='#FF9800', tags="address_conversion")
+            elif current_status == "页面加载中":
+                # 显示加载信息
+                self.canvas.create_text(575, 350, text=f"📥 页面加载：页面{page_number}加载到空闲块", 
+                                      font=('Arial', 12, 'bold'), fill='#4CAF50', tags="address_conversion")
+            else:
+                # 显示缺页信息
+                self.canvas.create_text(575, 350, text=f"✗ 缺页中断：页面{page_number}不在内存中", 
+                                      font=('Arial', 12, 'bold'), fill='#F44336', tags="address_conversion")
     
     def highlight_current_page(self, page_number):
         """高亮显示当前访问的页面"""
@@ -317,12 +445,12 @@ class TkinterPageAnimation:
         if page_number in self.simulator.memory:
             # 找到页面在内存中的位置
             block_index = self.simulator.memory.index(page_number)
-            block_width = 150
-            block_height = 80
+            block_width = 180
+            block_height = 100
             start_x = 50
             start_y = 60
             
-            x = start_x + block_index * (block_width + 20)
+            x = start_x + block_index * (block_width + 30)
             y = start_y
             
             # 绘制高亮边框
@@ -334,105 +462,48 @@ class TkinterPageAnimation:
                                   text="✓", font=('Arial', 16, 'bold'), 
                                   fill='#4CAF50', tags="highlight")
     
-    def show_page_fault_animation(self, page_number):
-        """显示缺页动画"""
-        self.canvas.delete("page_fault")
+    def show_page_check_animation(self, page_number):
+        """显示页面检查动画"""
+        # 清除所有动画图标
+        self.canvas.delete("page_check")
+        self.canvas.delete("free_block")
+        self.canvas.delete("replacement")
+        self.canvas.delete("page_hit")
         
-        # 显示缺页图标
-        self.canvas.create_text(375, 200, text="⚠", font=('Arial', 48), 
-                              fill='#FF9800', tags="page_fault")
-        
-        # 显示缺页信息
-        self.canvas.create_text(375, 250, text="缺页中断", font=('Arial', 16, 'bold'), 
-                              fill='#FF5722', tags="page_fault")
-        
-        # 显示加载信息
-        if len(self.simulator.memory) < self.simulator.memory_blocks:
-            text = f"加载页面 {page_number} 到空闲内存块"
-        else:
-            # 显示被置换的页面信息
-            if hasattr(self, 'algorithm_type') and self.algorithm_type == 'OPT':
-                victim_page = self.simulator._find_optimal_victim(self.current_step)
-                victim_index = self.simulator.memory.index(victim_page)
-                text = f"OPT算法：置换页面 {victim_page}，加载页面 {page_number} 到内存块{victim_index}"
-            else:  # FIFO
-                # 在FIFO中，被置换的是最早进入的页面
-                victim_page = self.simulator.fifo_queue[0]  # 即将被置换的页面
-                victim_index = self.simulator.memory.index(victim_page)
-                text = f"FIFO算法：置换页面 {victim_page}，加载页面 {page_number} 到内存块{victim_index}"
-        
-        self.canvas.create_text(375, 280, text=text, font=('Arial', 12), 
-                              fill='#666666', tags="page_fault")
+        # 显示检查过程
+        self.canvas.create_text(575, 380, text="🔍", font=('Arial', 48), 
+                              fill='#2196F3', tags="page_check")
+        self.canvas.create_text(575, 430, text="正在检查页面...", font=('Arial', 16, 'bold'), 
+                              fill='#2196F3', tags="page_check")
+        self.canvas.create_text(575, 460, text=f"检查页面 {page_number} 是否在内存中", 
+                              font=('Arial', 12), fill='#666666', tags="page_check")
     
-    def update_info_display(self, step):
-        """更新信息显示"""
-        if step >= len(self.simulator.sequence):
-            return
-            
-        logical_address = self.simulator.sequence[step]
-        page_number, page_offset = calculate_page_info(logical_address, self.simulator.page_size)
-        
-        # 更新信息标签
-        self.info_labels['current_instruction'].config(text=f"{step}")
-        self.info_labels['logical_address'].config(text=f"{logical_address}")
-        self.info_labels['page_number'].config(text=f"{page_number}")
-        self.info_labels['page_offset'].config(text=f"{page_offset}")
-        self.info_labels['memory_status'].config(text=str(self.simulator.memory))
-        self.info_labels['page_faults'].config(text=f"{self.simulator.page_faults}")
-        
-        # 检查是否缺页
+    def process_page_access(self, page_number, page_offset):
+        """处理页面访问"""
         if page_number not in self.simulator.memory:
-            self.info_labels['status'].config(text="缺页中断", foreground='red')
+            # 缺页处理
+            self.handle_page_fault(page_number, page_offset)
             
-            # 显示详细的操作信息
-            if len(self.simulator.memory) < self.simulator.memory_blocks:
-                self.info_labels['action'].config(text=f"加载页面 {page_number}")
-            else:
+            # 更新置换过程中的状态显示
+            if len(self.simulator.memory) >= self.simulator.memory_blocks:
+                # 需要置换的情况
                 if hasattr(self, 'algorithm_type') and self.algorithm_type == 'OPT':
-                    victim_page = self.simulator._find_optimal_victim(step)
+                    victim_page = self.simulator._find_optimal_victim(self.current_step)
                     victim_index = self.simulator.memory.index(victim_page)
+                    self.info_labels['status'].config(text="页面置换中", foreground='orange')
                     self.info_labels['action'].config(text=f"OPT: 置换页面{victim_page}，加载页面{page_number}到内存块{victim_index}")
                 else:  # FIFO
                     victim_page = self.simulator.fifo_queue[0]
                     victim_index = self.simulator.memory.index(victim_page)
+                    self.info_labels['status'].config(text="页面置换中", foreground='orange')
                     self.info_labels['action'].config(text=f"FIFO: 置换页面{victim_page}，加载页面{page_number}到内存块{victim_index}")
-            
-            self.show_page_fault_animation(page_number)
-        else:
-            self.info_labels['status'].config(text="页面命中", foreground='green')
-            self.info_labels['action'].config(text="直接访问")
-            self.highlight_current_page(page_number)
-    
-    def step_animation(self):
-        """执行一步动画"""
-        if self.current_step >= len(self.simulator.sequence) or not self.is_running:
-            return
-        
-        # 执行算法步骤
-        logical_address = self.simulator.sequence[self.current_step]
-        page_number, page_offset = calculate_page_info(logical_address, self.simulator.page_size)
-        
-        if page_number not in self.simulator.memory:
-            if len(self.simulator.memory) < self.simulator.memory_blocks:
-                # 还有空闲块，直接加载
-                self.simulator.memory.append(page_number)
-                if hasattr(self, 'algorithm_type') and self.algorithm_type == 'FIFO':
-                    self.simulator.fifo_queue.append(page_number)
             else:
-                # 需要置换
-                if hasattr(self, 'algorithm_type') and self.algorithm_type == 'OPT':
-                    # OPT算法：选择未来最长时间不会被使用的页面进行置换
-                    victim_page = self.simulator._find_optimal_victim(self.current_step)
-                    victim_index = self.simulator.memory.index(victim_page)
-                    self.simulator.memory[victim_index] = page_number  # 直接替换
-                else:  # FIFO算法：选择最早进入内存的页面进行置换
-                    # 从FIFO队列中获取最早进入的页面
-                    victim_page = self.simulator.fifo_queue[0]
-                    self.simulator.fifo_queue.pop(0)  # 移除最早进入的页面
-                    victim_index = self.simulator.memory.index(victim_page)
-                    self.simulator.memory[victim_index] = page_number  # 直接替换
-                    self.simulator.fifo_queue.append(page_number)  # 新页面加入队列
-            self.simulator.page_faults += 1
+                # 空闲块加载
+                self.info_labels['status'].config(text="页面加载中", foreground='blue')
+                self.info_labels['action'].config(text=f"加载页面 {page_number} 到空闲块")
+        else:
+            # 页面命中
+            self.handle_page_hit(page_number, page_offset)
         
         # 更新显示
         self.draw_memory_blocks()
@@ -446,6 +517,101 @@ class TkinterPageAnimation:
             self.root.after(self.speed_var.get(), self.step_animation)
         else:
             self.animation_finished()
+    
+    def handle_page_fault(self, page_number, page_offset):
+        """处理缺页中断"""
+        if len(self.simulator.memory) < self.simulator.memory_blocks:
+            # 还有空闲块
+            self.show_free_block_animation(page_number)
+            self.simulator.memory.append(page_number)
+            if hasattr(self, 'algorithm_type') and self.algorithm_type == 'FIFO':
+                self.simulator.fifo_queue.append(page_number)
+        else:
+            # 需要置换
+            self.show_page_replacement_animation(page_number)
+            
+            if hasattr(self, 'algorithm_type') and self.algorithm_type == 'OPT':
+                # OPT算法
+                victim_page = self.simulator._find_optimal_victim(self.current_step)
+                victim_index = self.simulator.memory.index(victim_page)
+                self.simulator.memory[victim_index] = page_number
+            else:  # FIFO算法
+                victim_page = self.simulator.fifo_queue[0]
+                self.simulator.fifo_queue.pop(0)
+                victim_index = self.simulator.memory.index(victim_page)
+                self.simulator.memory[victim_index] = page_number
+                self.simulator.fifo_queue.append(page_number)
+        
+        self.simulator.page_faults += 1
+    
+    def handle_page_hit(self, page_number, page_offset):
+        """处理页面命中"""
+        self.show_page_hit_animation(page_number)
+    
+    def show_free_block_animation(self, page_number):
+        """显示空闲块加载动画"""
+        # 清除所有动画图标
+        self.canvas.delete("page_check")
+        self.canvas.delete("free_block")
+        self.canvas.delete("replacement")
+        self.canvas.delete("page_hit")
+        
+        # 找到空闲块位置
+        free_block_index = len(self.simulator.memory)
+        
+        # 显示加载过程
+        self.canvas.create_text(575, 380, text="📥", font=('Arial', 48), 
+                              fill='#4CAF50', tags="free_block")
+        self.canvas.create_text(575, 430, text="加载页面到空闲块", font=('Arial', 16, 'bold'), 
+                              fill='#4CAF50', tags="free_block")
+        self.canvas.create_text(575, 460, text=f"页面 {page_number} 加载到内存块 {free_block_index}", 
+                              font=('Arial', 12), fill='#666666', tags="free_block")
+    
+    def show_page_replacement_animation(self, page_number):
+        """显示页面置换动画"""
+        # 清除所有动画图标
+        self.canvas.delete("page_check")
+        self.canvas.delete("free_block")
+        self.canvas.delete("replacement")
+        self.canvas.delete("page_hit")
+        
+        # 确定被置换的页面
+        if hasattr(self, 'algorithm_type') and self.algorithm_type == 'OPT':
+            victim_page = self.simulator._find_optimal_victim(self.current_step)
+            algorithm_name = "OPT算法"
+        else:  # FIFO
+            victim_page = self.simulator.fifo_queue[0]
+            algorithm_name = "FIFO算法"
+        
+        victim_index = self.simulator.memory.index(victim_page)
+        
+        # 显示置换过程
+        self.canvas.create_text(575, 380, text="🔄", font=('Arial', 48), 
+                              fill='#FF9800', tags="replacement")
+        self.canvas.create_text(575, 430, text="页面置换过程", font=('Arial', 16, 'bold'), 
+                              fill='#FF9800', tags="replacement")
+        
+        # 显示详细的置换信息
+        self.canvas.create_text(575, 460, text=f"{algorithm_name}：置换页面 {victim_page}，加载页面 {page_number}", 
+                              font=('Arial', 12), fill='#666666', tags="replacement")
+        self.canvas.create_text(575, 480, text=f"置换位置：内存块 {victim_index}", 
+                              font=('Arial', 12), fill='#666666', tags="replacement")
+    
+    def show_page_hit_animation(self, page_number):
+        """显示页面命中动画"""
+        # 清除所有动画图标
+        self.canvas.delete("page_check")
+        self.canvas.delete("free_block")
+        self.canvas.delete("replacement")
+        self.canvas.delete("page_hit")
+        
+        # 显示命中过程
+        self.canvas.create_text(575, 380, text="✅", font=('Arial', 48), 
+                              fill='#4CAF50', tags="page_hit")
+        self.canvas.create_text(575, 430, text="页面命中", font=('Arial', 16, 'bold'), 
+                              fill='#4CAF50', tags="page_hit")
+        self.canvas.create_text(575, 460, text=f"页面 {page_number} 已在内存中，直接访问", 
+                              font=('Arial', 12), fill='#666666', tags="page_hit")
     
     def start_animation(self):
         """开始动画"""
@@ -484,13 +650,18 @@ class TkinterPageAnimation:
         self.start_button.config(state=tk.DISABLED)
         self.pause_button.config(state=tk.DISABLED)
         
+        # 清除所有动画图标
+        self.canvas.delete("page_check")
+        self.canvas.delete("free_block")
+        self.canvas.delete("replacement")
+        self.canvas.delete("page_hit")
+        
         # 显示完成信息
-        self.canvas.delete("page_fault")
-        self.canvas.create_text(375, 200, text="✓", font=('Arial', 48), 
+        self.canvas.create_text(575, 380, text="✓", font=('Arial', 48), 
                               fill='#4CAF50', tags="finished")
-        self.canvas.create_text(375, 250, text="动画演示完成", font=('Arial', 16, 'bold'), 
+        self.canvas.create_text(575, 430, text="动画演示完成", font=('Arial', 16, 'bold'), 
                               fill='#4CAF50', tags="finished")
-        self.canvas.create_text(375, 280, text=f"总缺页次数: {self.simulator.page_faults}", 
+        self.canvas.create_text(575, 460, text=f"总缺页次数: {self.simulator.page_faults}", 
                               font=('Arial', 12), fill='#666666', tags="finished")
     
     def animate_fifo(self):
@@ -510,6 +681,72 @@ class TkinterPageAnimation:
         self.draw_memory_blocks()
         self.root.mainloop()
         return self.simulator.page_faults
+
+    def update_info_display(self, step):
+        """更新信息显示"""
+        if step >= len(self.simulator.sequence):
+            return
+            
+        logical_address = self.simulator.sequence[step]
+        page_number, page_offset = calculate_page_info(logical_address, self.simulator.page_size)
+        
+        # 更新信息标签
+        self.info_labels['current_instruction'].config(text=f"{step}")
+        self.info_labels['logical_address'].config(text=f"{logical_address}")
+        self.info_labels['page_number'].config(text=f"{page_number}")
+        self.info_labels['page_offset'].config(text=f"{page_offset}")
+        self.info_labels['memory_status'].config(text=str(self.simulator.memory))
+        self.info_labels['page_faults'].config(text=f"{self.simulator.page_faults}")
+        
+        # 检查是否缺页
+        if page_number not in self.simulator.memory:
+            # 只有在没有特殊状态时才更新状态显示
+            current_status = self.info_labels['status'].cget("text")
+            if current_status not in ["页面置换中", "页面加载中"]:
+                self.info_labels['status'].config(text="页面未命中", foreground='red')
+                self.info_labels['physical_address'].config(text="无法计算")
+                self.info_labels['address_conversion'].config(text="页面不在内存中")
+                
+                # 显示详细的操作信息
+                if len(self.simulator.memory) < self.simulator.memory_blocks:
+                    self.info_labels['action'].config(text=f"加载页面 {page_number}")
+                else:
+                    if hasattr(self, 'algorithm_type') and self.algorithm_type == 'OPT':
+                        victim_page = self.simulator._find_optimal_victim(step)
+                        victim_index = self.simulator.memory.index(victim_page)
+                        self.info_labels['action'].config(text=f"OPT: 置换页面{victim_page}，加载页面{page_number}到内存块{victim_index}")
+                    else:  # FIFO
+                        victim_page = self.simulator.fifo_queue[0]
+                        victim_index = self.simulator.memory.index(victim_page)
+                        self.info_labels['action'].config(text=f"FIFO: 置换页面{victim_page}，加载页面{page_number}到内存块{victim_index}")
+        else:
+            # 页面命中，计算物理地址
+            frame_number = self.simulator.memory.index(page_number)
+            physical_address = calculate_physical_address(page_offset, frame_number, self.simulator.page_size)
+            
+            self.info_labels['status'].config(text="页面命中", foreground='green')
+            self.info_labels['physical_address'].config(text=f"{physical_address}")
+            self.info_labels['address_conversion'].config(text=f"内存块{frame_number} × 10 + {page_offset} = {physical_address}")
+            self.info_labels['action'].config(text="直接访问")
+            self.highlight_current_page(page_number)
+        
+        # 更新地址转换可视化
+        self.update_address_conversion(logical_address, page_number, page_offset)
+    
+    def step_animation(self):
+        """执行一步动画"""
+        if self.current_step >= len(self.simulator.sequence) or not self.is_running:
+            return
+        
+        # 执行算法步骤
+        logical_address = self.simulator.sequence[self.current_step]
+        page_number, page_offset = calculate_page_info(logical_address, self.simulator.page_size)
+        
+        # 先显示页面检查过程
+        self.show_page_check_animation(page_number)
+        
+        # 延迟显示结果
+        self.root.after(800, lambda: self.process_page_access(page_number, page_offset))
 
 # 测试函数
 if __name__ == "__main__":
